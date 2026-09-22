@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PromptBox } from '@/components/prompt-box';
 import { parseQuizText } from '@/lib/parser';
+import { useAuth } from '@/lib/auth-context';
 import {
   saveQuiz,
   getSavedQuizzes,
@@ -18,10 +19,12 @@ import {
   Clock,
   Trash2,
   Share2,
-  FileQuestion,
   ArrowRight,
   BookMarked,
   Sparkles,
+  Lock,
+  ShieldCheck,
+  GraduationCap,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -51,6 +54,8 @@ H: A sequence of nucleotides in DNA or RNA that encodes the synthesis of a gene 
 
 export default function HomePage() {
   const router = useRouter();
+  const { isCreator } = useAuth();
+
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [timerMinutes, setTimerMinutes] = useState<number | null>(10);
@@ -93,10 +98,8 @@ export default function HomePage() {
       timeLimitMinutes: timerMinutes,
     };
 
-    // Save to persistent storage and active session
     saveQuiz(quiz);
     setActiveQuiz(quiz);
-
     router.push('/quiz');
   };
 
@@ -146,7 +149,6 @@ export default function HomePage() {
     }
   };
 
-  // Group stats for live preview
   const countsByType = useMemo(() => {
     const stats: Record<string, number> = {};
     for (const q of parsedQuestions) {
@@ -157,208 +159,237 @@ export default function HomePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-      {/* Intro Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Create Study Quiz
-        </h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Copy Q&A answers from Gemini, paste them here, and start drilling offline.
-        </p>
-      </div>
-
-      {/* Gemini Prompt Helper */}
-      <PromptBox />
-
-      {/* Main Studio Card */}
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs p-6 space-y-5">
-        {/* Title & Sample button */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div className="w-full sm:max-w-md">
-            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
-              Quiz Title (optional)
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. World History Chapter 4"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100"
-            />
-          </div>
-
-          <button
-            onClick={handleLoadSample}
-            type="button"
-            className="text-xs text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 self-end sm:self-auto py-1"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Try with sample questions
-          </button>
-        </div>
-
-        {/* Text Area */}
-        <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            Paste Q&A Content
-          </label>
-          <div className="relative">
-            <textarea
-              rows={8}
-              value={text}
-              onChange={(e) => handleTextChange(e.target.value)}
-              placeholder="Q: What is the capital of France?&#10;A: Paris&#10;H: Known as the City of Light&#10;&#10;Q: Water boils at 100 degrees Celsius.&#10;A: True&#10;H: At standard atmospheric pressure"
-              className="w-full p-3.5 text-sm font-mono rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 placeholder:text-zinc-400 leading-relaxed resize-y"
-            />
-          </div>
-
-          {/* Live Parsing Preview Bar */}
-          <div className="flex flex-wrap items-center justify-between text-xs pt-1 text-zinc-500 dark:text-zinc-400 gap-2">
-            <div>
-              {parsedQuestions.length > 0 ? (
-                <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                  Ready: {parsedQuestions.length} question{parsedQuestions.length !== 1 ? 's' : ''} detected
-                  {countsByType.multiple_choice ? ` (${countsByType.multiple_choice} multiple choice` : ''}
-                  {countsByType.true_false ? `, ${countsByType.true_false} T/F` : ''}
-                  {countsByType.fill_blank ? `, ${countsByType.fill_blank} fill-blank` : ''}
-                  {countsByType.type_answer ? `, ${countsByType.type_answer} typed` : ''}
-                  {countsByType.flashcard ? `, ${countsByType.flashcard} flashcard` : ''})
-                </span>
-              ) : (
-                <span>Paste at least one Q: and A: pair to begin.</span>
-              )}
+      {/* ── Student Mode Header (when not creator) ── */}
+      {!isCreator ? (
+        <div className="space-y-6">
+          <div className="space-y-1 text-center sm:text-left">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 mb-2">
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Student Study Portal</span>
             </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+              Welcome to StudyQuiz
+            </h1>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-xl">
+              Enter your quiz code to start practicing offline, or choose from your saved quizzes below.
+            </p>
+          </div>
 
-            {text && (
+          {/* Large, Prominent Join Box for Students */}
+          <div className="rounded-xl border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 sm:p-8 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-base">
+              <Share2 className="w-5 h-5 text-blue-500" />
+              <span>Enter Quiz Join Code</span>
+            </div>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Paste the 6-character code provided by your instructor or classmate to begin your quiz.
+            </p>
+
+            <form onSubmit={handleJoinQuiz} className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="e.g. ABC123"
+                maxLength={8}
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                className="flex-1 px-4 py-3 text-base uppercase tracking-widest font-mono rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 text-center font-bold"
+              />
               <button
-                type="button"
-                onClick={() => handleTextChange('')}
-                className="hover:text-rose-600 transition-colors"
+                type="submit"
+                disabled={!joinCode.trim() || joinLoading}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-sm font-semibold transition-all disabled:opacity-40 shadow-xs"
               >
-                Clear text
+                <Play className="w-4 h-4 fill-current" />
+                <span>{joinLoading ? 'Downloading Quiz...' : 'Start Quiz'}</span>
               </button>
-            )}
-          </div>
-        </div>
-
-        {/* Options & Start Button */}
-        <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-          {/* Timer Selector */}
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-zinc-400 shrink-0" />
-            <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">
-              Timer:
-            </span>
-            <select
-              value={timerMinutes === null ? 'none' : timerMinutes}
-              onChange={(e) =>
-                setTimerMinutes(e.target.value === 'none' ? null : Number(e.target.value))
-              }
-              className="px-2.5 py-1.5 text-xs rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 font-medium text-zinc-800 dark:text-zinc-200"
-            >
-              <option value="none">Untimed (Practice)</option>
-              <option value="5">5 Minutes</option>
-              <option value="10">10 Minutes</option>
-              <option value="15">15 Minutes</option>
-              <option value="25">25 Minutes</option>
-            </select>
-          </div>
-
-          {/* Start Button */}
-          <button
-            onClick={handleStartQuiz}
-            disabled={parsedQuestions.length === 0}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
-          >
-            <Play className="w-4 h-4 fill-current" />
-            <span>
-              Start Quiz {parsedQuestions.length > 0 ? `(${parsedQuestions.length})` : ''}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* Grid: Join with Code & Saved Quizzes */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Join shared quiz card */}
-        <div className="md:col-span-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-4">
-          <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-medium text-sm">
-            <Share2 className="w-4 h-4 text-blue-500" />
-            <span>Join Classmate&apos;s Quiz</span>
-          </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Have a 6-character code from a classmate? Enter it below to test yourself.
-          </p>
-
-          <form onSubmit={handleJoinQuiz} className="space-y-2">
-            <input
-              type="text"
-              placeholder="e.g. ABC123"
-              maxLength={8}
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-              className="w-full px-3 py-2 text-sm uppercase tracking-wider font-mono rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 text-center font-bold"
-            />
+            </form>
             {joinError && (
               <p className="text-xs text-rose-500 font-medium">{joinError}</p>
             )}
-            <button
-              type="submit"
-              disabled={!joinCode.trim() || joinLoading}
-              className="w-full py-2 px-3 text-xs font-medium rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 transition-colors disabled:opacity-40"
-            >
-              {joinLoading ? 'Loading...' : 'Download & Take Quiz'}
-            </button>
-          </form>
+          </div>
         </div>
-
-        {/* Saved Quizzes */}
-        <div className="md:col-span-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-medium text-sm">
-              <BookMarked className="w-4 h-4 text-emerald-500" />
-              <span>Saved Sets ({savedQuizzes.length})</span>
+      ) : (
+        /* ── Creator Mode Active Banner ── */
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-200">
+            <div className="flex items-center gap-2 text-xs font-semibold">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>Creator Mode Active — You have unlocked quiz creation and publishing privileges.</span>
             </div>
-            <span className="text-xs text-zinc-400">Saved offline in browser</span>
+            <span className="text-[11px] text-emerald-700 dark:text-emerald-400 opacity-80">
+              Prototype Admin
+            </span>
           </div>
 
-          {savedQuizzes.length === 0 ? (
-            <div className="text-center py-8 text-xs text-zinc-400">
-              No saved quizzes yet. Create one above to review anytime.
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-              {savedQuizzes.map((quiz) => (
-                <div
-                  key={quiz.id}
-                  onClick={() => handleStartSaved(quiz)}
-                  className="group flex items-center justify-between p-3 rounded-lg border border-zinc-100 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950/40 hover:bg-white dark:hover:bg-zinc-900 cursor-pointer transition-all"
-                >
-                  <div className="min-w-0 pr-3">
-                    <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate group-hover:text-zinc-950 dark:group-hover:text-white">
-                      {quiz.title}
-                    </h3>
-                    <div className="flex items-center gap-2 text-xs text-zinc-400 mt-0.5">
-                      <span>{quiz.questions.length} questions</span>
-                      {quiz.shareCode && (
-                        <span className="font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.2 rounded text-[11px]">
-                          Code: {quiz.shareCode}
-                        </span>
-                      )}
-                      <span>· {new Date(quiz.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+              Quiz Creator Studio
+            </h1>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Copy Q&A answers from Gemini, paste them here, and start drilling offline.
+            </p>
+          </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+          {/* Gemini Prompt Helper */}
+          <PromptBox />
+
+          {/* Creator Studio Card */}
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs p-6 space-y-5">
+            {/* Title & Sample button */}
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+              <div className="w-full sm:max-w-md">
+                <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Quiz Title (optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. World History Chapter 4"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100"
+                />
+              </div>
+
+              <button
+                onClick={handleLoadSample}
+                type="button"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 self-end sm:self-auto py-1"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Try with sample questions
+              </button>
+            </div>
+
+            {/* Text Area */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                Paste Q&A Content
+              </label>
+              <textarea
+                rows={8}
+                value={text}
+                onChange={(e) => handleTextChange(e.target.value)}
+                placeholder="Q: What is the capital of France?&#10;A: Paris&#10;H: Known as the City of Light&#10;&#10;Q: Water boils at 100 degrees Celsius.&#10;A: True&#10;H: At standard atmospheric pressure"
+                className="w-full p-3.5 text-sm font-mono rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 placeholder:text-zinc-400 leading-relaxed resize-y"
+              />
+
+              {/* Live Parsing Preview Bar */}
+              <div className="flex flex-wrap items-center justify-between text-xs pt-1 text-zinc-500 dark:text-zinc-400 gap-2">
+                <div>
+                  {parsedQuestions.length > 0 ? (
+                    <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                      Ready: {parsedQuestions.length} question{parsedQuestions.length !== 1 ? 's' : ''} detected
+                      {countsByType.multiple_choice ? ` (${countsByType.multiple_choice} multiple choice` : ''}
+                      {countsByType.true_false ? `, ${countsByType.true_false} T/F` : ''}
+                      {countsByType.fill_blank ? `, ${countsByType.fill_blank} fill-blank` : ''}
+                      {countsByType.type_answer ? `, ${countsByType.type_answer} typed` : ''}
+                      {countsByType.flashcard ? `, ${countsByType.flashcard} flashcard` : ''})
+                    </span>
+                  ) : (
+                    <span>Paste at least one Q: and A: pair to begin.</span>
+                  )}
+                </div>
+
+                {text && (
+                  <button
+                    type="button"
+                    onClick={() => handleTextChange('')}
+                    className="hover:text-rose-600 transition-colors"
+                  >
+                    Clear text
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Options & Start Button */}
+            <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-zinc-400 shrink-0" />
+                <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">
+                  Timer:
+                </span>
+                <select
+                  value={timerMinutes === null ? 'none' : timerMinutes}
+                  onChange={(e) =>
+                    setTimerMinutes(e.target.value === 'none' ? null : Number(e.target.value))
+                  }
+                  className="px-2.5 py-1.5 text-xs rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 font-medium text-zinc-800 dark:text-zinc-200"
+                >
+                  <option value="none">Untimed (Practice)</option>
+                  <option value="5">5 Minutes</option>
+                  <option value="10">10 Minutes</option>
+                  <option value="15">15 Minutes</option>
+                  <option value="25">25 Minutes</option>
+                </select>
+              </div>
+
+              <button
+                onClick={handleStartQuiz}
+                disabled={parsedQuestions.length === 0}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+              >
+                <Play className="w-4 h-4 fill-current" />
+                <span>
+                  Start Quiz {parsedQuestions.length > 0 ? `(${parsedQuestions.length})` : ''}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Saved Quizzes List (Always Visible) ── */}
+      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-sm">
+            <BookMarked className="w-4 h-4 text-emerald-500" />
+            <span>Available Study Sets ({savedQuizzes.length})</span>
+          </div>
+          <span className="text-xs text-zinc-400">Works 100% offline</span>
+        </div>
+
+        {savedQuizzes.length === 0 ? (
+          <div className="text-center py-10 text-xs text-zinc-400 space-y-1">
+            <p>No study sets saved yet.</p>
+            <p className="text-[11px] text-zinc-400">
+              Enter a 6-character code above to download a quiz from your classmate.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+            {savedQuizzes.map((quiz) => (
+              <div
+                key={quiz.id}
+                onClick={() => handleStartSaved(quiz)}
+                className="group flex items-center justify-between p-3.5 rounded-lg border border-zinc-100 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950/40 hover:bg-white dark:hover:bg-zinc-900 cursor-pointer transition-all"
+              >
+                <div className="min-w-0 pr-3">
+                  <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate group-hover:text-zinc-950 dark:group-hover:text-white">
+                    {quiz.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-zinc-400 mt-0.5">
+                    <span>{quiz.questions.length} questions</span>
                     {quiz.shareCode && (
-                      <Link
-                        href={`/leaderboard/${quiz.shareCode}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors"
-                      >
-                        Leaderboard
-                      </Link>
+                      <span className="font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.2 rounded text-[11px]">
+                        Code: {quiz.shareCode}
+                      </span>
                     )}
+                    <span>· {new Date(quiz.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {quiz.shareCode && (
+                    <Link
+                      href={`/leaderboard/${quiz.shareCode}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors"
+                    >
+                      Leaderboard
+                    </Link>
+                  )}
+                  {isCreator && (
                     <button
                       onClick={(e) => handleDeleteSaved(quiz.id, e)}
                       title="Delete quiz"
@@ -366,13 +397,13 @@ export default function HomePage() {
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                    <ArrowRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-transform group-hover:translate-x-0.5" />
-                  </div>
+                  )}
+                  <ArrowRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-transform group-hover:translate-x-0.5" />
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

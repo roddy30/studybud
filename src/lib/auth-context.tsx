@@ -4,26 +4,36 @@ import React, { createContext, useContext, useEffect, useState, useMemo } from '
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 
+const CREATOR_PIN_STORAGE_KEY = 'studyquiz_creator_unlocked';
+const DEFAULT_CREATOR_PIN = process.env.NEXT_PUBLIC_CREATOR_PIN || 'studybud2026';
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isOnline: boolean;
+  isCreator: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  unlockCreator: (pin: string) => boolean;
+  lockCreator: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   isOnline: true,
+  isCreator: false,
   signInWithGoogle: async () => {},
   signOut: async () => {},
+  unlockCreator: () => false,
+  lockCreator: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
+  const [creatorUnlocked, setCreatorUnlocked] = useState(false);
 
   // Monitor network status
   useEffect(() => {
@@ -35,6 +45,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    // Check creator unlocked status from localStorage
+    try {
+      const savedUnlock = localStorage.getItem(CREATOR_PIN_STORAGE_KEY);
+      if (savedUnlock === 'true') {
+        setCreatorUnlocked(true);
+      }
+    } catch {}
 
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -63,7 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
@@ -82,6 +99,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, [supabase]);
+
+  // Determine if current user is Creator (via PIN or Admin email)
+  const isCreator = useMemo(() => {
+    if (creatorUnlocked) return true;
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase().trim();
+    if (adminEmail && user?.email?.toLowerCase().trim() === adminEmail) {
+      return true;
+    }
+    return false;
+  }, [creatorUnlocked, user]);
+
+  const unlockCreator = (pin: string): boolean => {
+    const trimmedPin = pin.trim();
+    if (trimmedPin === DEFAULT_CREATOR_PIN) {
+      try {
+        localStorage.setItem(CREATOR_PIN_STORAGE_KEY, 'true');
+      } catch {}
+      setCreatorUnlocked(true);
+      return true;
+    }
+    return false;
+  };
+
+  const lockCreator = () => {
+    try {
+      localStorage.removeItem(CREATOR_PIN_STORAGE_KEY);
+    } catch {}
+    setCreatorUnlocked(false);
+  };
 
   const signInWithGoogle = async () => {
     if (!supabase) {
@@ -115,8 +161,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         isOnline,
+        isCreator,
         signInWithGoogle,
         signOut,
+        unlockCreator,
+        lockCreator,
       }}
     >
       {children}

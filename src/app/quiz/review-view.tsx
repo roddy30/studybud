@@ -37,7 +37,7 @@ export function ReviewView({
   onRetakeAll,
   onGoHome,
 }: ReviewViewProps) {
-  const { user, isOnline, signInWithGoogle } = useAuth();
+  const { user, isOnline, signInWithGoogle, isCreator } = useAuth();
 
   const [shareCode, setShareCode] = useState<string | null>(quiz.shareCode || null);
   const [sharing, setSharing] = useState(false);
@@ -300,7 +300,7 @@ export function ReviewView({
               </div>
             )}
           </div>
-        ) : (
+        ) : isCreator ? (
           <div className="space-y-2">
             <p className="text-xs text-zinc-600 dark:text-zinc-400">
               Publish this quiz online so classmates can test themselves and compete on a live leaderboard.
@@ -322,6 +322,10 @@ export function ReviewView({
               </button>
             )}
             {shareError && <p className="text-xs text-rose-500">{shareError}</p>}
+          </div>
+        ) : (
+          <div className="text-xs text-zinc-500 py-1">
+            This study session is saved offline in your browser.
           </div>
         )}
       </div>

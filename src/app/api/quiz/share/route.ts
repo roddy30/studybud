@@ -3,9 +3,11 @@ import { createClient } from '@/lib/supabase/server';
 import { generateJoinCode } from '@/lib/utils';
 import { ParsedQuestion } from '@/types/quiz';
 
+const CREATOR_PIN = process.env.NEXT_PUBLIC_CREATOR_PIN || 'studybud2026';
+
 /**
  * POST /api/quiz/share
- * Publish a quiz and get a 6-character share code
+ * Publish a quiz and get a 6-character share code (Restricted to Creator)
  */
 export async function POST(request: Request) {
   try {
@@ -19,6 +21,25 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Sign in with Google required to share quizzes.' },
         { status: 401 }
+      );
+    }
+
+    // Verify creator authorization (Admin email or PIN header)
+    const adminEmail =
+      process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    const pinHeader = request.headers.get('x-creator-pin');
+
+    const isEmailAdmin =
+      adminEmail && user.email?.toLowerCase().trim() === adminEmail.toLowerCase().trim();
+    const isPinAdmin = pinHeader && pinHeader.trim() === CREATOR_PIN;
+
+    if (adminEmail && !isEmailAdmin && !isPinAdmin) {
+      return NextResponse.json(
+        {
+          error:
+            'Quiz creation and publishing is currently locked to the course administrator.',
+        },
+        { status: 403 }
       );
     }
 
@@ -56,7 +77,7 @@ export async function POST(request: Request) {
       user.user_metadata?.full_name ||
       user.user_metadata?.name ||
       user.email?.split('@')[0] ||
-      'Anonymous';
+      'Instructor';
 
     const { data, error } = await supabase
       .from('shared_quizzes')
