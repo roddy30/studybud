@@ -13,6 +13,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "StudyQuiz — Offline Study & Quiz Practice",
   description: "Create interactive study quizzes offline from your notes and Gemini answers.",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

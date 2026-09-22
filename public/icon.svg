@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+  </defs>
+  <!-- Background badge -->
+  <rect width="32" height="32" rx="8" fill="#18181b"/>
+  <!-- Open Book Left Page -->
+  <path d="M7 11C7 9.343 8.343 8 10 8H14.5V23H10C8.343 23 7 21.657 7 20V11Z" fill="#3b82f6"/>
+  <!-- Open Book Right Page -->
+  <path d="M25 11C25 9.343 23.657 8 22 8H17.5V23H22C23.657 23 25 21.657 25 20V11Z" fill="#60a5fa"/>
+  <!-- Spine Line -->
+  <line x1="16" y1="9" x2="16" y2="22" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Bookmark / Check Accent -->
+  <path d="M12.5 14.5L14 16L19 11.5" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
