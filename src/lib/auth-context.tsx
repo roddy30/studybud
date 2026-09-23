@@ -63,16 +63,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Supabase client instance
   const supabase = useMemo(() => {
     try {
-      if (
-        process.env.NEXT_PUBLIC_SUPABASE_URL &&
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      ) {
-        return createClient();
-      }
+      return createClient();
     } catch (e) {
       console.warn('Supabase client init skipped (running offline)', e);
+      return null;
     }
-    return null;
   }, []);
 
   useEffect(() => {
