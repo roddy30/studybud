@@ -73,8 +73,8 @@ export function ReviewView({
 
   // Share quiz online
   const handleShareQuiz = async () => {
-    if (!user) {
-      alert('Please sign in with Google to share quizzes with your class.');
+    if (!user && !isCreator) {
+      signInWithGoogle();
       return;
     }
 
@@ -82,9 +82,17 @@ export function ReviewView({
     setShareError('');
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (isCreator) {
+        headers['x-creator-pin'] =
+          process.env.NEXT_PUBLIC_CREATOR_PIN || 'studybud2026';
+      }
+
       const res = await fetch('/api/quiz/share', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           title: quiz.title,
           questions: quiz.questions,
@@ -95,6 +103,11 @@ export function ReviewView({
       if (!res.ok) throw new Error(data.error || 'Failed to share quiz');
 
       setShareCode(data.shareCode);
+      // Persist shareCode to storage
+      try {
+        const { saveQuiz } = await import('@/lib/storage');
+        saveQuiz({ ...quiz, shareCode: data.shareCode });
+      } catch {}
     } catch (err: any) {
       setShareError(err?.message || 'Error publishing quiz');
     } finally {

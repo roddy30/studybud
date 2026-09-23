@@ -22,9 +22,12 @@ import {
   ArrowRight,
   BookMarked,
   Sparkles,
-  Lock,
   ShieldCheck,
   GraduationCap,
+  Copy,
+  Check,
+  X,
+  Trophy,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -64,6 +67,14 @@ export default function HomePage() {
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
 
+  // Share modal state
+  const [sharingLoading, setSharingLoading] = useState(false);
+  const [shareResult, setShareResult] = useState<{
+    code: string;
+    title: string;
+  } | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+
   // Load saved quizzes & draft on mount
   useEffect(() => {
     setSavedQuizzes(getSavedQuizzes());
@@ -101,6 +112,90 @@ export default function HomePage() {
     saveQuiz(quiz);
     setActiveQuiz(quiz);
     router.push('/quiz');
+  };
+
+  // Direct share from Studio without taking the quiz
+  const handlePublishDirect = async () => {
+    if (parsedQuestions.length === 0) return;
+
+    setSharingLoading(true);
+    const quizTitle = title.trim() || `Quiz (${new Date().toLocaleDateString()})`;
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (isCreator) {
+        headers['x-creator-pin'] =
+          process.env.NEXT_PUBLIC_CREATOR_PIN || 'studybud2026';
+      }
+
+      const res = await fetch('/api/quiz/share', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          title: quizTitle,
+          questions: parsedQuestions,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to share quiz');
+
+      const quiz: QuizSet = {
+        id: `quiz-${Date.now().toString(36)}`,
+        title: quizTitle,
+        questions: parsedQuestions,
+        createdAt: new Date().toISOString(),
+        timeLimitMinutes: timerMinutes,
+        shareCode: data.shareCode,
+      };
+
+      saveQuiz(quiz);
+      setSavedQuizzes(getSavedQuizzes());
+      setShareResult({ code: data.shareCode, title: quizTitle });
+    } catch (err: any) {
+      alert(`Could not share quiz: ${err?.message}`);
+    } finally {
+      setSharingLoading(false);
+    }
+  };
+
+  // Share existing saved quiz
+  const handleShareExisting = async (quiz: QuizSet, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSharingLoading(true);
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (isCreator) {
+        headers['x-creator-pin'] =
+          process.env.NEXT_PUBLIC_CREATOR_PIN || 'studybud2026';
+      }
+
+      const res = await fetch('/api/quiz/share', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          title: quiz.title,
+          questions: quiz.questions,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to share quiz');
+
+      const updated = { ...quiz, shareCode: data.shareCode };
+      saveQuiz(updated);
+      setSavedQuizzes(getSavedQuizzes());
+      setShareResult({ code: data.shareCode, title: quiz.title });
+    } catch (err: any) {
+      alert(`Could not share quiz: ${err?.message}`);
+    } finally {
+      setSharingLoading(false);
+    }
   };
 
   const handleStartSaved = (quiz: QuizSet) => {
@@ -156,6 +251,14 @@ export default function HomePage() {
     }
     return stats;
   }, [parsedQuestions]);
+
+  const handleCopyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch {}
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
@@ -214,7 +317,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-200">
             <div className="flex items-center gap-2 text-xs font-semibold">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>Creator Mode Active — You have unlocked quiz creation and publishing privileges.</span>
+              <span>Creator Mode Active — You can create, paste, and publish new quizzes for your class.</span>
             </div>
             <span className="text-[11px] text-emerald-700 dark:text-emerald-400 opacity-80">
               Prototype Admin
@@ -226,7 +329,7 @@ export default function HomePage() {
               Quiz Creator Studio
             </h1>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Copy Q&A answers from Gemini, paste them here, and start drilling offline.
+              Copy Q&A answers from Gemini, paste them here, and start drilling offline or publish to your class.
             </p>
           </div>
 
@@ -302,7 +405,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Options & Start Button */}
+            {/* Options & Action Buttons */}
             <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-zinc-400 shrink-0" />
@@ -324,16 +427,30 @@ export default function HomePage() {
                 </select>
               </div>
 
-              <button
-                onClick={handleStartQuiz}
-                disabled={parsedQuestions.length === 0}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
-              >
-                <Play className="w-4 h-4 fill-current" />
-                <span>
-                  Start Quiz {parsedQuestions.length > 0 ? `(${parsedQuestions.length})` : ''}
-                </span>
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                {/* Direct Share Button */}
+                <button
+                  type="button"
+                  onClick={handlePublishDirect}
+                  disabled={parsedQuestions.length === 0 || sharingLoading}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+                >
+                  <Share2 className="w-4 h-4 text-blue-500" />
+                  <span>{sharingLoading ? 'Publishing...' : 'Share & Get Code'}</span>
+                </button>
+
+                {/* Start Quiz Button */}
+                <button
+                  onClick={handleStartQuiz}
+                  disabled={parsedQuestions.length === 0}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>
+                    Start Quiz {parsedQuestions.length > 0 ? `(${parsedQuestions.length})` : ''}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -370,25 +487,36 @@ export default function HomePage() {
                   </h3>
                   <div className="flex items-center gap-2 text-xs text-zinc-400 mt-0.5">
                     <span>{quiz.questions.length} questions</span>
-                    {quiz.shareCode && (
-                      <span className="font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.2 rounded text-[11px]">
+                    {quiz.shareCode ? (
+                      <span className="font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.2 rounded text-[11px] text-zinc-800 dark:text-zinc-200 font-semibold">
                         Code: {quiz.shareCode}
                       </span>
-                    )}
+                    ) : null}
                     <span>· {new Date(quiz.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {quiz.shareCode && (
+                  {quiz.shareCode ? (
                     <Link
                       href={`/leaderboard/${quiz.shareCode}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors"
+                      className="px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors flex items-center gap-1"
                     >
-                      Leaderboard
+                      <Trophy className="w-3 h-3" />
+                      <span>Leaderboard</span>
                     </Link>
-                  )}
+                  ) : isCreator ? (
+                    <button
+                      onClick={(e) => handleShareExisting(quiz, e)}
+                      title="Share and get code"
+                      className="px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors flex items-center gap-1"
+                    >
+                      <Share2 className="w-3 h-3" />
+                      <span>Share</span>
+                    </button>
+                  ) : null}
+
                   {isCreator && (
                     <button
                       onClick={(e) => handleDeleteSaved(quiz.id, e)}
@@ -405,6 +533,55 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* Share Success Modal */}
+      {shareResult && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 max-w-sm w-full space-y-4 shadow-xl text-center">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+              <Share2 className="w-5 h-5" />
+            </div>
+
+            <div>
+              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                Quiz Shared Successfully!
+              </h3>
+              <p className="text-xs text-zinc-500 mt-1">
+                Give this 6-character code to your classmates:
+              </p>
+            </div>
+
+            <div className="p-3 bg-zinc-50 dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+              <span className="text-2xl font-mono font-extrabold tracking-widest text-zinc-900 dark:text-zinc-100">
+                {shareResult.code}
+              </span>
+              <button
+                onClick={() => handleCopyCode(shareResult.code)}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-90 flex items-center gap-1 transition-opacity"
+              >
+                {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <Link
+                href={`/leaderboard/${shareResult.code}`}
+                onClick={() => setShareResult(null)}
+                className="flex-1 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+              >
+                View Leaderboard
+              </Link>
+              <button
+                onClick={() => setShareResult(null)}
+                className="flex-1 py-2 text-xs font-semibold rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-90"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

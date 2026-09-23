@@ -7,39 +7,24 @@ const CREATOR_PIN = process.env.NEXT_PUBLIC_CREATOR_PIN || 'studybud2026';
 
 /**
  * POST /api/quiz/share
- * Publish a quiz and get a 6-character share code (Restricted to Creator)
+ * Publish a quiz and get a 6-character share code (Allowed via Creator PIN or Google Auth)
  */
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const {
       data: { user },
-      error: authError,
     } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Sign in with Google required to share quizzes.' },
-        { status: 401 }
-      );
-    }
-
-    // Verify creator authorization (Admin email or PIN header)
-    const adminEmail =
-      process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL;
     const pinHeader = request.headers.get('x-creator-pin');
+    const isPinAuthorized = pinHeader && pinHeader.trim() === CREATOR_PIN;
+    const isGoogleAuthorized = !!user;
 
-    const isEmailAdmin =
-      adminEmail && user.email?.toLowerCase().trim() === adminEmail.toLowerCase().trim();
-    const isPinAdmin = pinHeader && pinHeader.trim() === CREATOR_PIN;
-
-    if (adminEmail && !isEmailAdmin && !isPinAdmin) {
+    // Must have Creator PIN or Google sign in
+    if (!isPinAuthorized && !isGoogleAuthorized) {
       return NextResponse.json(
-        {
-          error:
-            'Quiz creation and publishing is currently locked to the course administrator.',
-        },
-        { status: 403 }
+        { error: 'Creator PIN or Google sign-in required to publish quizzes.' },
+        { status: 401 }
       );
     }
 
@@ -74,9 +59,9 @@ export async function POST(request: Request) {
     }
 
     const userName =
-      user.user_metadata?.full_name ||
-      user.user_metadata?.name ||
-      user.email?.split('@')[0] ||
+      user?.user_metadata?.full_name ||
+      user?.user_metadata?.name ||
+      user?.email?.split('@')[0] ||
       'Instructor';
 
     const { data, error } = await supabase
@@ -85,7 +70,7 @@ export async function POST(request: Request) {
         share_code: shareCode,
         title: title.trim(),
         questions,
-        created_by: user.id,
+        created_by: user ? user.id : null,
         creator_name: userName,
       })
       .select('share_code, id, title')
@@ -94,7 +79,7 @@ export async function POST(request: Request) {
     if (error) {
       console.error('Error inserting shared quiz:', error);
       return NextResponse.json(
-        { error: 'Failed to share quiz. Database error.' },
+        { error: `Database error: ${error.message}` },
         { status: 500 }
       );
     }

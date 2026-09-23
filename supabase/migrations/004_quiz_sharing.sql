@@ -54,10 +54,12 @@ create policy "Anyone can read shared_quizzes"
   on shared_quizzes for select
   using (true);
 
--- Authenticated users can publish quizzes
-create policy "Authenticated users can create shared_quizzes"
+-- Quizzes can be inserted via API (which enforces Creator PIN or Admin Auth)
+drop policy if exists "Authenticated users can create shared_quizzes" on shared_quizzes;
+drop policy if exists "Allow insert on shared_quizzes" on shared_quizzes;
+create policy "Allow insert on shared_quizzes"
   on shared_quizzes for insert
-  with check (auth.role() = 'authenticated');
+  with check (true);
 
 -- Anyone can view the leaderboard
 create policy "Anyone can read quiz_scores"
