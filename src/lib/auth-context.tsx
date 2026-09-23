@@ -1,14 +1,33 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+} from 'react';
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut as fbSignOut,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import { auth, googleProvider } from '@/lib/firebase/client';
 
 const CREATOR_PIN_STORAGE_KEY = 'studyquiz_creator_unlocked';
 const DEFAULT_CREATOR_PIN = process.env.NEXT_PUBLIC_CREATOR_PIN || 'studybud2026';
 
+export interface AuthUser {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   loading: boolean;
   isOnline: boolean;
   isCreator: boolean;
@@ -30,7 +49,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [creatorUnlocked, setCreatorUnlocked] = useState(false);
@@ -60,40 +79,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Supabase client instance
-  const supabase = useMemo(() => {
-    try {
-      return createClient();
-    } catch (e) {
-      console.warn('Supabase client init skipped (running offline)', e);
-      return null;
-    }
-  }, []);
-
+  // Listen to Firebase auth state changes
   useEffect(() => {
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    const unsubscribe = onAuthStateChanged(auth, (fbUser: FirebaseUser | null) => {
+      if (fbUser) {
+        setUser({
+          uid: fbUser.uid,
+          displayName: fbUser.displayName,
+          email: fbUser.email,
+          photoURL: fbUser.photoURL,
+        });
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
+    return () => unsubscribe();
+  }, []);
 
   // Determine if current user is Creator (via PIN or Admin email)
   const isCreator = useMemo(() => {
@@ -125,29 +128,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    if (!supabase) {
-      alert('Supabase credentials are not configured in .env.local yet.');
-      return;
-    }
-
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      console.error('Google sign-in error:', error);
-      alert(`Could not sign in: ${error.message}`);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err: any) {
+      console.warn('Firebase popup sign-in notice:', err.code, err.message);
+      // Fallback to redirect if popup is blocked on mobile
+      if (
+        err.code === 'auth/popup-blocked' ||
+        err.code === 'auth/popup-closed-by-user'
+      ) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (e: any) {
+          alert(`Could not sign in: ${e.message}`);
+        }
+      } else if (err.code !== 'auth/cancelled-popup-request') {
+        alert(`Sign in error: ${err.message}`);
+      }
     }
   };
 
   const signOut = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    setUser(null);
+    try {
+      await fbSignOut(auth);
+      setUser(null);
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
   };
 
   return (

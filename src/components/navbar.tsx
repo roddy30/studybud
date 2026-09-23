@@ -31,12 +31,11 @@ export function Navbar() {
   const [pinError, setPinError] = useState('');
 
   const displayName =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
+    user?.displayName ||
     user?.email?.split('@')[0] ||
     'Student';
 
-  const avatarUrl = user?.user_metadata?.avatar_url;
+  const avatarUrl = user?.photoURL;
 
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();

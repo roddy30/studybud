@@ -139,6 +139,9 @@ export function ReviewView({
           score,
           total,
           timeUsedSeconds,
+          userId: user.uid,
+          userName: user.displayName || user.email?.split('@')[0] || 'Student',
+          userAvatar: user.photoURL || null,
         }),
       });
 
