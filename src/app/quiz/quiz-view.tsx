@@ -237,22 +237,24 @@ export function QuizView({ quiz, onComplete, onExit }: QuizViewProps) {
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Top Header: Progress, Timer, Live Counters */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400">
           <button
             onClick={onExit}
-            className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+            className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors py-1 shrink-0"
           >
-            ← Exit Quiz
+            ← Exit
           </button>
 
           {/* Real-time Tally */}
-          <div className="flex items-center gap-3 font-medium">
+          <div className="flex items-center gap-2 sm:gap-3 font-medium order-3 sm:order-2 w-full sm:w-auto justify-center sm:justify-start pt-1.5 sm:pt-0 border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800/60">
             <span className="text-emerald-600 dark:text-emerald-400">
               ✓ {correctCount}
             </span>
+            <span className="text-zinc-300 dark:text-zinc-700">·</span>
             <span className="text-rose-500 dark:text-rose-400">
               ✗ {wrongCount}
             </span>
+            <span className="text-zinc-300 dark:text-zinc-700">·</span>
             <span className="text-zinc-400">
               {remainingCount} left
             </span>
@@ -260,12 +262,12 @@ export function QuizView({ quiz, onComplete, onExit }: QuizViewProps) {
 
           {/* Countdown Clock */}
           {timeLeft !== null ? (
-            <div className={`flex items-center gap-1 font-mono text-sm ${timerWarning}`}>
+            <div className={`flex items-center gap-1 font-mono text-sm shrink-0 order-2 sm:order-3 ${timerWarning}`}>
               <Clock className="w-3.5 h-3.5" />
               <span>{formatTimer(timeLeft)}</span>
             </div>
           ) : (
-            <span>Untimed</span>
+            <span className="shrink-0 order-2 sm:order-3 text-zinc-400">Untimed</span>
           )}
         </div>
 
@@ -352,7 +354,7 @@ export function QuizView({ quiz, onComplete, onExit }: QuizViewProps) {
                     key={i}
                     disabled={isAnswered}
                     onClick={() => submitAnswer(opt)}
-                    className={`w-full text-left p-3.5 rounded-lg border text-sm flex items-start gap-3 transition-colors ${btnStyle}`}
+                    className={`w-full text-left p-3.5 min-h-[48px] rounded-lg border text-sm flex items-start gap-3 transition-all active:scale-[0.99] touch-manipulation ${btnStyle}`}
                   >
                     <span className="w-5 h-5 rounded-sm bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-mono shrink-0 font-semibold text-zinc-500 dark:text-zinc-400">
                       {i + 1}
@@ -390,7 +392,7 @@ export function QuizView({ quiz, onComplete, onExit }: QuizViewProps) {
                     key={val}
                     disabled={isAnswered}
                     onClick={() => submitAnswer(val)}
-                    className={`py-4 rounded-lg border text-sm font-medium transition-all ${btnStyle}`}
+                    className={`py-4 min-h-[52px] rounded-lg border text-sm font-medium transition-all active:scale-[0.98] touch-manipulation ${btnStyle}`}
                   >
                     <span>{val}</span>
                     <span className="text-xs text-zinc-400 block mt-0.5 font-mono">
