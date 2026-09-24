@@ -12,6 +12,7 @@ import {
   Clock,
   HelpCircle,
 } from 'lucide-react';
+import { shuffleArray } from '@/lib/utils';
 
 interface QuizViewProps {
   quiz: QuizSet;
@@ -20,6 +21,22 @@ interface QuizViewProps {
 }
 
 export function QuizView({ quiz, onComplete, onExit }: QuizViewProps) {
+  const [questions] = useState<ParsedQuestion[]>(() => {
+    let finalQuestions = [...quiz.questions];
+    if (quiz.shuffleQuestions) {
+      finalQuestions = shuffleArray(finalQuestions);
+    }
+    if (quiz.shuffleOptions) {
+      finalQuestions = finalQuestions.map(q => {
+        if (q.type === 'multiple_choice' && q.options) {
+          return { ...q, options: shuffleArray(q.options) };
+        }
+        return q;
+      });
+    }
+    return finalQuestions;
+  });
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
   const [isAnswered, setIsAnswered] = useState(false);
@@ -41,8 +58,8 @@ export function QuizView({ quiz, onComplete, onExit }: QuizViewProps) {
   const startTimeRef = useRef<number>(Date.now());
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const currentQ: ParsedQuestion = quiz.questions[currentIndex];
-  const totalQuestions = quiz.questions.length;
+  const currentQ: ParsedQuestion = questions[currentIndex];
+  const totalQuestions = questions.length;
   const remainingCount = totalQuestions - results.length;
 
   // Auto-focus input for typing questions
@@ -75,7 +92,7 @@ export function QuizView({ quiz, onComplete, onExit }: QuizViewProps) {
           clearInterval(interval);
           // Time expired! Mark uncompleted questions as unanswered
           const completedIds = new Set(results.map((r) => r.questionId));
-          const uncompleted = quiz.questions
+          const uncompleted = questions
             .filter((q) => !completedIds.has(q.id))
             .map((q) => ({
               questionId: q.id,
@@ -95,7 +112,7 @@ export function QuizView({ quiz, onComplete, onExit }: QuizViewProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [totalSeconds, results, quiz.questions, handleFinish]);
+  }, [totalSeconds, results, questions, handleFinish]);
 
   // Submit answer
   const submitAnswer = useCallback(

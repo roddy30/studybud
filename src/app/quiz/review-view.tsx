@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { QuizSet, QuestionResult } from '@/types/quiz';
 import { useAuth } from '@/lib/auth-context';
+import { getAttempts } from '@/lib/storage';
+import { getMostMissedQuestions, MissedQuestion } from '@/lib/analytics';
 import {
   RotateCcw,
   Home,
@@ -17,8 +19,12 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
+  AlertTriangle,
+  Printer,
 } from 'lucide-react';
 import Link from 'next/link';
+import { exportResultsAsPDF } from '@/lib/export-pdf';
+import { QuizAttempt } from '@/types/quiz';
 
 interface ReviewViewProps {
   quiz: QuizSet;
@@ -49,6 +55,13 @@ export function ReviewView({
   const [submitError, setSubmitError] = useState('');
 
   const [correctOpen, setCorrectOpen] = useState(false);
+
+  const [missedStats, setMissedStats] = useState<MissedQuestion[]>([]);
+
+  useEffect(() => {
+    const attempts = getAttempts();
+    setMissedStats(getMostMissedQuestions(attempts));
+  }, []);
 
   const correctResults = results.filter((r) => r.status === 'correct');
   const wrongResults = results.filter((r) => r.status === 'wrong');
@@ -232,6 +245,26 @@ export function ReviewView({
           )}
 
           <button
+            onClick={() => {
+              const attempt: QuizAttempt = {
+                id: `attempt-${Date.now()}`,
+                setId: quiz.id,
+                title: quiz.title,
+                results,
+                score,
+                total,
+                timeUsedSeconds,
+                completedAt: new Date().toISOString(),
+              };
+              exportResultsAsPDF(attempt);
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+          >
+            <Printer className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Print Results</span>
+          </button>
+
+          <button
             onClick={onRetakeAll}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
           >
@@ -355,14 +388,24 @@ export function ReviewView({
           </div>
 
           <div className="space-y-2.5">
-            {wrongResults.map((r, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-zinc-900 p-4 space-y-2 text-sm"
-              >
-                <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                  {r.question}
-                </div>
+            {wrongResults.map((r, i) => {
+              const missedStat = missedStats.find(m => m.question === r.question);
+              const isWeakArea = missedStat && missedStat.missCount >= 3;
+              
+              return (
+                <div
+                  key={i}
+                  className="rounded-lg border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-zinc-900 p-4 space-y-2 text-sm relative"
+                >
+                  {isWeakArea && (
+                    <div className="absolute top-3 right-3 flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/50">
+                      <AlertTriangle className="w-3 h-3" />
+                      You've missed this {missedStat.missCount} times
+                    </div>
+                  )}
+                  <div className={`font-medium text-zinc-900 dark:text-zinc-100 ${isWeakArea ? 'pr-36' : ''}`}>
+                    {r.question}
+                  </div>
 
                 <div className="grid gap-1 text-xs">
                   <div className="flex items-start gap-1.5 text-rose-600 dark:text-rose-400">
@@ -381,7 +424,8 @@ export function ReviewView({
                   </div>
                 )}
               </div>
-            ))}
+            );
+          })}
           </div>
         </div>
       )}

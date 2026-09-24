@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { QuizSet, QuestionResult, QuizAttempt } from '@/types/quiz';
 import { getActiveQuiz, setActiveQuiz, saveAttempt } from '@/lib/storage';
+import { recordStudyDay } from '@/lib/streak';
+import { addOrUpdateCard } from '@/lib/spaced-repetition';
 import { QuizView } from './quiz-view';
 import { ReviewView } from './review-view';
 import Link from 'next/link';
@@ -46,6 +48,21 @@ export default function QuizPage() {
     };
 
     saveAttempt(attempt);
+    recordStudyDay();
+
+    // Update Spaced Repetition cards
+    completedResults.forEach((result) => {
+      // Find original options if multiple choice
+      const originalQuestion = quiz.questions.find(q => q.id === result.questionId);
+      addOrUpdateCard(
+        result.question,
+        result.correctAnswer,
+        originalQuestion?.hint || '',
+        result.type,
+        originalQuestion?.options,
+        result.status === 'correct'
+      );
+    });
   };
 
   const handleDrillMistakes = (missedQuiz: QuizSet) => {

@@ -17,11 +17,29 @@ export interface ParsedQuestion {
 export interface QuizSet {
   id: string;
   title: string;
+  category?: string;
   questions: ParsedQuestion[];
   createdAt: string;
   shareCode?: string;
   timeLimitMinutes?: number | null; // null = untimed
+  shuffleQuestions?: boolean;
+  shuffleOptions?: boolean;
 }
+
+export const QUIZ_CATEGORIES = [
+  'General',
+  'Math',
+  'Science',
+  'History',
+  'English',
+  'Filipino',
+  'Social Studies',
+  'Technology',
+  'Arts',
+  'Health',
+  'Other',
+] as const;
+export type QuizCategory = typeof QUIZ_CATEGORIES[number];
 
 export type AnswerStatus = 'correct' | 'wrong' | 'unanswered';
 

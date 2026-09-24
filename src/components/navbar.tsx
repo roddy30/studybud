@@ -10,8 +10,14 @@ import {
   Lock,
   Unlock,
   ShieldCheck,
+  Sun,
+  Moon,
+  Monitor,
+  History
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useTheme } from '@/lib/theme-context';
+import { getAttempts } from '@/lib/storage';
 
 export function Navbar() {
   const {
@@ -25,10 +31,20 @@ export function Navbar() {
     lockCreator,
   } = useAuth();
 
+  const { theme, setTheme } = useTheme();
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
+  const [hasAttempts, setHasAttempts] = useState(false);
+
+  useEffect(() => {
+    const attempts = getAttempts();
+    if (attempts.length > 0) {
+      setHasAttempts(true);
+    }
+  }, []);
 
   const displayName =
     user?.displayName ||
@@ -64,6 +80,18 @@ export function Navbar() {
               </div>
               <span className="text-base tracking-tight font-medium">StudyQuiz</span>
             </Link>
+
+            {/* History Link */}
+            {hasAttempts && (
+              <Link
+                href="/history"
+                className="hidden sm:inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                title="View Quiz History"
+              >
+                <History className="w-4 h-4" />
+                <span>History</span>
+              </Link>
+            )}
 
             {/* Creator Badge or Student Indicator */}
             {isCreator ? (
@@ -106,6 +134,21 @@ export function Navbar() {
                 </>
               )}
             </div>
+
+            {/* Theme Toggler */}
+            <button
+              onClick={() => {
+                if (theme === 'system') setTheme('light');
+                else if (theme === 'light') setTheme('dark');
+                else setTheme('system');
+              }}
+              title={`Theme: ${theme}`}
+              className="p-1.5 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100 rounded-lg border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center"
+            >
+              {theme === 'system' && <Monitor className="w-4 h-4" />}
+              {theme === 'light' && <Sun className="w-4 h-4" />}
+              {theme === 'dark' && <Moon className="w-4 h-4" />}
+            </button>
           </div>
 
           {/* User Auth Controls */}
